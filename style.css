@@ -1,0 +1,91 @@
+/* NetMapper Custom Styling */
+
+/* Custom Radial Grid Background for Topology Canvas */
+.bg-radial-grid {
+  background-color: #070a13;
+  background-image: 
+    radial-gradient(circle at center, rgba(14, 165, 233, 0.04) 0%, transparent 70%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Vis Network Canvas overrides */
+#vis-network-canvas canvas {
+  outline: none;
+}
+
+/* Pulse animation for scanner */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-radar {
+  animation: radar-sweep 4s linear infinite;
+}
+
+/* Subnet cell styling */
+.subnet-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: monospace;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  border: 1px solid transparent;
+}
+.subnet-cell:hover {
+  transform: scale(1.15);
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+.subnet-cell.active-host {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #34d399;
+  font-weight: bold;
+}
+.subnet-cell.gateway-host {
+  background: rgba(244, 63, 94, 0.35);
+  border-color: #f43f5e;
+  color: #fda4af;
+  font-weight: bold;
+}
+.subnet-cell.empty-host {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: rgba(51, 65, 85, 0.5);
+  color: #64748b;
+}
+
+/* Device inventory table hover */
+#inventory-table-body tr:hover {
+  background-color: rgba(30, 41, 59, 0.6);
+}

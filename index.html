@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NetMapper - Local Network Discovery & Topology Suite</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dark: {
+              900: '#070a13',
+              800: '#0f172a',
+              700: '#1e293b',
+              600: '#334155',
+            },
+            cyber: {
+              blue: '#0284c7',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              rose: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Vis.js Network for interactive graph topology -->
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-dark-800/95 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/30">
+          <i data-lucide="network" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">
+              NetMapper
+            </h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/60 animate-pulse">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>
+              LAN Active
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Subnet: <span class="font-mono text-cyan-300" id="current-subnet-badge">192.168.1.0/24</span> &bull; Gateway: <span class="font-mono text-cyan-300" id="current-gw-badge">192.168.1.1</span></p>
+        </div>
+      </div>
+
+      <!-- Quick Stats Pills -->
+      <div class="flex items-center space-x-2 text-xs">
+        <div class="bg-dark-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg flex items-center space-x-2">
+          <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span class="text-slate-400">Hosts:</span>
+          <span class="font-bold text-white font-mono" id="stat-host-count">14</span>
+        </div>
+        <div class="bg-dark-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg flex items-center space-x-2 hidden md:flex">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span class="text-slate-400">Security:</span>
+          <span class="font-bold text-emerald-300">Monitored</span>
+        </div>
+        <div class="bg-dark-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg flex items-center space-x-2">
+          <i data-lucide="activity" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span class="text-slate-400">Avg Latency:</span>
+          <span class="font-bold text-white font-mono" id="stat-latency">1.8 ms</span>
+        </div>
+      </div>
+
+      <!-- Header Action Buttons -->
+      <div class="flex items-center space-x-2">
+        <button id="btn-scan-trigger" class="flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-cyan-600/20 active:scale-95 transition-all">
+          <i data-lucide="radar" class="w-4 h-4"></i>
+          <span>Sweep LAN</span>
+        </button>
+
+        <button id="btn-open-add-modal" class="flex items-center space-x-1 px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-all active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4 text-cyan-400"></i>
+          <span class="hidden sm:inline">Add Node</span>
+        </button>
+
+        <button id="btn-open-guide-modal" class="p-2 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all" title="Local Discovery Setup">
+          <i data-lucide="terminal" class="w-4 h-4 text-amber-400"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- VIEW NAVIGATION TABS -->
+  <div class="bg-dark-800 border-b border-slate-800 px-4 lg:px-8">
+    <div class="max-w-7xl mx-auto flex space-x-1 overflow-x-auto py-2 no-scrollbar">
+      <button class="nav-tab active flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-medium text-white bg-slate-700/70 border border-slate-600/50 transition-all" data-tab="tab-topology">
+        <i data-lucide="share-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span>Topology Map</span>
+      </button>
+      <button class="nav-tab flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-dark-700/50 transition-all" data-tab="tab-inventory">
+        <i data-lucide="list" class="w-3.5 h-3.5 text-blue-400"></i>
+        <span>Device Inventory (<span id="tab-inventory-count">14</span>)</span>
+      </button>
+      <button class="nav-tab flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-dark-700/50 transition-all" data-tab="tab-subnet">
+        <i data-lucide="grid" class="w-3.5 h-3.5 text-purple-400"></i>
+        <span>Subnet Heatmap (/24)</span>
+      </button>
+      <button class="nav-tab flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-dark-700/50 transition-all" data-tab="tab-scanner">
+        <i data-lucide="laptop" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Run Local Scanner</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCAN STATUS BANNER (When scanning/animating) -->
+  <div id="scan-progress-bar-container" class="hidden bg-dark-800 border-b border-cyan-800/50 px-4 py-2">
+    <div class="max-w-7xl mx-auto flex items-center justify-between text-xs mb-1">
+      <div class="flex items-center space-x-2 text-cyan-300 font-mono">
+        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-cyan-400"></i>
+        <span id="scan-status-text">Probing ARP table & TCP broadcast responses across 192.168.1.0/24...</span>
+      </div>
+      <span class="font-mono text-cyan-400" id="scan-percent-text">0%</span>
+    </div>
+    <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+      <div id="scan-progress-fill" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 rounded-full transition-all duration-150" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col min-h-0">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: TOPOLOGY MAP VIEW                   -->
+    <!-- ========================================== -->
+    <section id="tab-topology" class="tab-content flex-1 flex flex-col min-h-[550px] relative">
+      
+      <!-- Topology Floating Controls Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3 bg-dark-800/80 p-2.5 rounded-xl border border-slate-800">
+        
+        <!-- Filter Category Badges -->
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="text-slate-400 text-[11px] font-medium mr-1">Filter:</span>
+          <button class="filter-btn active px-2.5 py-1 rounded-md text-xs font-medium bg-cyan-900/60 text-cyan-300 border border-cyan-700/60" data-filter="all">All (14)</button>
+          <button class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-dark-700 text-slate-300 hover:bg-slate-700" data-filter="Gateway">Gateways</button>
+          <button class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-dark-700 text-slate-300 hover:bg-slate-700" data-filter="Server">Servers/NAS</button>
+          <button class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-dark-700 text-slate-300 hover:bg-slate-700" data-filter="Workstation">Computers</button>
+          <button class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-dark-700 text-slate-300 hover:bg-slate-700" data-filter="Mobile">Mobile</button>
+          <button class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-dark-700 text-slate-300 hover:bg-slate-700" data-filter="IoT">Smart Home / IoT</button>
+        </div>
+
+        <!-- Canvas Controls -->
+        <div class="flex items-center space-x-1.5 text-xs">
+          <button id="btn-fit-network" class="px-2.5 py-1 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-slate-300 rounded-md flex items-center space-x-1" title="Reset View">
+            <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Fit</span>
+          </button>
+          <button id="btn-toggle-physics" class="px-2.5 py-1 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-slate-300 rounded-md flex items-center space-x-1" title="Freeze Layout">
+            <i data-lucide="pin" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span class="hidden sm:inline">Freeze</span>
+          </button>
+          <button id="btn-export-json" class="px-2.5 py-1 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-slate-300 rounded-md flex items-center space-x-1" title="Export Topology JSON">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span class="hidden sm:inline">Export</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Network Canvas & Interactive Drawer -->
+      <div class="flex-1 relative rounded-2xl overflow-hidden border border-slate-800 bg-radial-grid min-h-[500px] flex">
+        
+        <!-- The Vis.js canvas container -->
+        <div id="vis-network-canvas" class="w-full h-full min-h-[500px]"></div>
+
+        <!-- Legend Overlay -->
+        <div class="absolute bottom-3 left-3 bg-dark-800/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 text-xs shadow-xl pointer-events-none hidden sm:block">
+          <div class="font-semibold text-slate-300 mb-1.5 flex items-center space-x-1.5">
+            <i data-lucide="info" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Network Key</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-400">
+            <div class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Gateway / Router</span></div>
+            <div class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span><span>Server / NAS</span></div>
+            <div class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span><span>Workstations</span></div>
+            <div class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>Mobile Phones</span></div>
+            <div class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Smart Home / IoT</span></div>
+            <div class="flex items-center space-x-1.5"><span class="w-4 border-t-2 border-dashed border-slate-400 inline-block"></span><span>Wi-Fi Link</span></div>
+          </div>
+        </div>
+
+        <!-- Device Inspector Drawer (Side panel) -->
+        <div id="device-inspector-drawer" class="absolute top-0 right-0 bottom-0 w-full sm:w-96 bg-dark-800/98 backdrop-blur-xl border-l border-slate-700/80 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col z-20">
+          
+          <!-- Inspector Header -->
+          <div class="p-4 border-b border-slate-700/70 flex items-center justify-between bg-dark-700/50">
+            <div class="flex items-center space-x-2.5">
+              <div id="inspector-device-icon" class="w-9 h-9 rounded-lg bg-cyan-900/60 border border-cyan-700/60 flex items-center justify-center text-cyan-300 text-lg">
+                💻
+              </div>
+              <div>
+                <h3 id="inspector-device-name" class="font-bold text-sm text-white">Device Name</h3>
+                <p id="inspector-device-category" class="text-xs text-cyan-400">Category</p>
+              </div>
+            </div>
+            <button id="btn-close-inspector" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Inspector Content Body -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+            
+            <!-- Address & Hardware Card -->
+            <div class="bg-dark-900/70 rounded-xl p-3 border border-slate-800 space-y-2">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Network Identity</div>
+              <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                <span class="text-slate-400">IPv4 Address</span>
+                <span id="inspector-ip" class="font-mono text-cyan-300 font-bold text-sm">192.168.1.1</span>
+              </div>
+              <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                <span class="text-slate-400">MAC Address</span>
+                <span id="inspector-mac" class="font-mono text-slate-200">00:11:22:33:44:55</span>
+              </div>
+              <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                <span class="text-slate-400">Hardware Vendor</span>
+                <span id="inspector-vendor" class="text-slate-200 font-medium">Apple Inc.</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-slate-400">Connection Mode</span>
+                <span id="inspector-conn-type" class="text-slate-200">Gigabit Ethernet</span>
+              </div>
+            </div>
+
+            <!-- Health & Latency -->
+            <div class="bg-dark-900/70 rounded-xl p-3 border border-slate-800 space-y-2">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Vitals & Connectivity</div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">Host Status</span>
+                <span id="inspector-status-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">ONLINE</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">Round-Trip Latency</span>
+                <span id="inspector-ping" class="font-mono text-white font-semibold">0.8 ms</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">IP Lease Type</span>
+                <span id="inspector-lease" class="text-slate-300">Static / Reserved</span>
+              </div>
+            </div>
+
+            <!-- Detected Open Ports -->
+            <div class="bg-dark-900/70 rounded-xl p-3 border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Open TCP Ports & Services</span>
+                <span id="inspector-ports-count" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 font-mono">3 ports</span>
+              </div>
+              <div id="inspector-ports-list" class="space-y-1.5 pt-1">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Device Actions -->
+            <div class="pt-2 flex space-x-2">
+              <button id="btn-quick-ping" class="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium flex items-center justify-center space-x-1.5 transition">
+                <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+                <span>Test Ping</span>
+              </button>
+              <button id="btn-delete-node" class="px-3 py-2 bg-rose-950/80 hover:bg-rose-900 border border-rose-800/60 text-rose-300 rounded-lg font-medium transition" title="Remove device from view">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: DEVICE INVENTORY TABLE VIEW         -->
+    <!-- ========================================== -->
+    <section id="tab-inventory" class="tab-content hidden flex-1 flex flex-col">
+      <div class="bg-dark-800 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col">
+        
+        <!-- Table Filter / Search Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="relative w-full sm:w-72">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input id="inventory-search-input" type="text" placeholder="Search by IP, name, MAC, port..." class="w-full bg-dark-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition">
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="text-slate-400">Total Devices: <strong class="text-white font-mono" id="inv-total-count">14</strong></span>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="flex-1 overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-dark-700/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Device / Hostname</th>
+                <th class="py-3 px-4">IP Address</th>
+                <th class="py-3 px-4">MAC Address</th>
+                <th class="py-3 px-4">Vendor / Hardware</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Open Ports</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body" class="divide-y divide-slate-800/80 font-mono text-[11px]">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: SUBNET ALLOCATION & IP HEATMAP      -->
+    <!-- ========================================== -->
+    <section id="tab-subnet" class="tab-content hidden flex-1 flex flex-col">
+      <div class="bg-dark-800 border border-slate-800 rounded-2xl p-5 flex-1 flex flex-col">
+        
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="grid" class="w-4 h-4 text-purple-400"></i>
+              <span>IPv4 Subnet Map: 192.168.1.0/24 (254 Usable Hosts)</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Visual representation of all 254 IP addresses in your subnet block.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span><span class="text-slate-300">Active Host</span></span>
+            <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block"></span><span class="text-slate-300">Gateway (.1)</span></span>
+            <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-slate-800 border border-slate-700 inline-block"></span><span class="text-slate-400">Available</span></span>
+          </div>
+        </div>
+
+        <!-- Subnet Grid Container (254 cells) -->
+        <div class="flex-1 overflow-y-auto max-h-[600px] p-2 bg-dark-900 rounded-xl border border-slate-800/80">
+          <div id="subnet-grid" class="grid grid-cols-8 sm:grid-cols-16 md:grid-cols-24 lg:grid-cols-32 gap-1.5 text-center">
+            <!-- 254 cells generated dynamically -->
+          </div>
+        </div>
+
+        <!-- Subnet Usage Statistics Bar -->
+        <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap justify-between items-center text-xs text-slate-400">
+          <div>Allocated: <strong class="text-cyan-300 font-mono" id="subnet-allocated-count">14</strong> / 254 hosts (<span id="subnet-percent-used" class="font-mono text-purple-400">5.5%</span> capacity)</div>
+          <div>DHCP Range: <span class="font-mono text-slate-200">192.168.1.100 - 192.168.1.199</span></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: RUN LOCAL SCANNER GUIDE & IMPORT    -->
+    <!-- ========================================== -->
+    <section id="tab-scanner" class="tab-content hidden flex-1 flex flex-col space-y-4">
+      
+      <!-- Top banner explaining local network mapping -->
+      <div class="bg-gradient-to-r from-blue-950/60 to-cyan-950/40 border border-cyan-800/50 rounded-2xl p-5">
+        <div class="flex items-start space-x-3.5">
+          <div class="p-2.5 rounded-xl bg-cyan-600/20 text-cyan-400 border border-cyan-500/30">
+            <i data-lucide="shield-alert" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">How Local Network Discovery Works</h3>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              Because cloud servers are hosted in secure remote data centers, they cannot penetrate through your home Wi-Fi router's NAT firewall to directly scan your private local area network (LAN).
+              To map your exact devices, you can run the included standalone Python scanner script on your own computer, which outputs a <code class="bg-slate-900 px-1.5 py-0.5 rounded text-cyan-300 font-mono">network_map.json</code> file that you can load here in 1 click!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two column grid: Run Script vs Load File -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
+        
+        <!-- Step 1: Run Script on your Mac/PC/Linux -->
+        <div class="bg-dark-800 border border-slate-800 rounded-2xl p-5 flex flex-col">
+          <h4 class="text-sm font-bold text-white flex items-center space-x-2 mb-2">
+            <span class="w-6 h-6 rounded-full bg-cyan-600/30 border border-cyan-500/50 text-cyan-300 flex items-center justify-center text-xs">1</span>
+            <span>Run Discovery on Your Local Machine</span>
+          </h4>
+          <p class="text-xs text-slate-400 mb-3">
+            Open Terminal (macOS/Linux) or PowerShell/Command Prompt (Windows) on any computer connected to your home Wi-Fi:
+          </p>
+
+          <div class="bg-dark-900 rounded-xl p-3 border border-slate-800 text-xs font-mono relative mb-4">
+            <div class="text-slate-500 text-[10px] mb-1"># Python Standard Library Scanner (Included in this repo)</div>
+            <div class="text-cyan-300 select-all" id="cmd-python-scanner">python3 network_mapper.py</div>
+            <button class="copy-cmd-btn absolute top-3 right-3 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition" data-target="cmd-python-scanner">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <div class="space-y-2 text-xs text-slate-300 mb-4">
+            <div class="font-semibold text-slate-400 text-[11px] uppercase tracking-wider">Alternative Industry Tools:</div>
+            
+            <div class="bg-dark-900/80 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center">
+              <div>
+                <span class="text-emerald-400 font-semibold">Nmap Ping Sweep:</span>
+                <code class="block text-slate-400 text-[11px] mt-0.5" id="cmd-nmap">nmap -sn 192.168.1.0/24</code>
+              </div>
+              <button class="copy-cmd-btn p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded" data-target="cmd-nmap">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <div class="bg-dark-900/80 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center">
+              <div>
+                <span class="text-blue-400 font-semibold">ARP-Scan (Linux/Mac):</span>
+                <code class="block text-slate-400 text-[11px] mt-0.5" id="cmd-arpscan">sudo arp-scan --localnet</code>
+              </div>
+              <button class="copy-cmd-btn p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded" data-target="cmd-arpscan">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <div class="bg-dark-900/80 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center">
+              <div>
+                <span class="text-purple-400 font-semibold">Windows PowerShell ARP:</span>
+                <code class="block text-slate-400 text-[11px] mt-0.5" id="cmd-ps">Get-NetNeighbor -AddressFamily IPv4</code>
+              </div>
+              <button class="copy-cmd-btn p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded" data-target="cmd-ps">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Import scan results or JSON -->
+        <div class="bg-dark-800 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <h4 class="text-sm font-bold text-white flex items-center space-x-2 mb-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 flex items-center justify-center text-xs">2</span>
+              <span>Import Real Scan Data</span>
+            </h4>
+            <p class="text-xs text-slate-400 mb-4">
+              Drop the generated <code class="text-cyan-300 font-mono">network_map.json</code> below to immediately visualize your live network topology:
+            </p>
+
+            <!-- Drag and drop zone -->
+            <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-dark-900/50">
+              <input type="file" id="file-input" accept=".json" class="hidden">
+              <i data-lucide="upload-cloud" class="w-8 h-8 text-cyan-400 mx-auto mb-2"></i>
+              <div class="text-xs font-semibold text-white">Click to upload or drag & drop</div>
+              <div class="text-[11px] text-slate-400 mt-1">Accepts <span class="font-mono text-cyan-300">network_map.json</span> generated by NetMapper</div>
+            </div>
+          </div>
+
+          <!-- Reset / Demo Actions -->
+          <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
+            <button id="btn-load-sample" class="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-slate-700 text-cyan-300 rounded-lg flex items-center space-x-1.5 transition">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>Reload Sample LAN</span>
+            </button>
+            <button id="btn-clear-all" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 rounded-lg flex items-center space-x-1.5 transition">
+              <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+              <span>Clear Topology</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ADD DEVICE MODAL -->
+  <div id="add-device-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+          <i data-lucide="plus-circle" class="w-4 h-4 text-cyan-400"></i>
+          <span>Add Custom Network Device</span>
+        </h3>
+        <button id="btn-close-add-modal" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="form-add-device" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Hostname / Friendly Name</label>
+          <input id="input-dev-name" type="text" required placeholder="e.g. My-Smart-TV" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">IPv4 Address</label>
+            <input id="input-dev-ip" type="text" required placeholder="192.168.1.55" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">MAC Address (Optional)</label>
+            <input id="input-dev-mac" type="text" placeholder="b8:27:eb:11:22:33" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Device Category</label>
+            <select id="input-dev-category" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+              <option value="Workstation">Workstation / PC</option>
+              <option value="Mobile Device">Mobile Device</option>
+              <option value="Server / NAS">Server / NAS</option>
+              <option value="Smart Home & IoT">Smart Home & IoT</option>
+              <option value="Access Point / Switch">Access Point / Switch</option>
+              <option value="Network Printer">Network Printer</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Manufacturer / Vendor</label>
+            <input id="input-dev-vendor" type="text" placeholder="e.g. Apple, Samsung" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Open TCP Ports (Comma separated)</label>
+          <input id="input-dev-ports" type="text" placeholder="e.g. 22, 80, 443" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" id="btn-cancel-add-modal" class="px-4 py-2 bg-dark-700 text-slate-300 rounded-lg hover:bg-slate-700 transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-semibold transition">Add Device to Map</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- QUICK TOAST NOTIFICATION -->
+  <div id="toast-notification" class="fixed bottom-5 right-5 bg-dark-800 border border-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs shadow-2xl flex items-center space-x-2 transform translate-y-24 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message">Message</span>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-dark-800/60 border-t border-slate-800/80 px-4 py-3 text-center text-xs text-slate-500">
+    <p>NetMapper Local Network Suite &bull; Discovers, catalogs, and visualizes home & office LAN topology</p>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
