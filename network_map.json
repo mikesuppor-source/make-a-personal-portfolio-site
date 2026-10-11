@@ -1,0 +1,251 @@
+{
+  "metadata": {
+    "subnet": "192.168.1.0/24",
+    "gateway": "192.168.1.1",
+    "local_host_ip": "192.168.1.101",
+    "scan_timestamp": "2026-10-11 11:58:00",
+    "elapsed_seconds": 1.84,
+    "device_count": 14
+  },
+  "devices": [
+    {
+      "ip": "192.168.1.1",
+      "hostname": "UniFi-Dream-Machine-Pro",
+      "mac": "74:83:c2:1a:2b:3c",
+      "vendor": "Ubiquiti Networks",
+      "category": "Router / Gateway",
+      "status": "online",
+      "latency": "0.4 ms",
+      "lease": "Static (Gateway)",
+      "open_ports": [
+        { "port": 53, "service": "DNS" },
+        { "port": 80, "service": "HTTP" },
+        { "port": 443, "service": "HTTPS (UniFi OS)" }
+      ],
+      "is_gateway": true,
+      "conn_type": "Fiber WAN / SFP+ Uplink"
+    },
+    {
+      "ip": "192.168.1.2",
+      "hostname": "UniFi-Switch-24-PoE",
+      "mac": "74:83:c2:3d:4e:5f",
+      "vendor": "Ubiquiti Networks",
+      "category": "Access Point / Switch",
+      "status": "online",
+      "latency": "0.6 ms",
+      "lease": "Static",
+      "open_ports": [
+        { "port": 22, "service": "SSH" },
+        { "port": 80, "service": "HTTP" }
+      ],
+      "is_gateway": false,
+      "conn_type": "10 Gbps DAC"
+    },
+    {
+      "ip": "192.168.1.3",
+      "hostname": "UniFi-U6-Pro-AP",
+      "mac": "74:83:c2:6a:7b:8c",
+      "vendor": "Ubiquiti Networks",
+      "category": "Access Point / Switch",
+      "status": "online",
+      "latency": "0.8 ms",
+      "lease": "Static",
+      "open_ports": [
+        { "port": 22, "service": "SSH" }
+      ],
+      "is_gateway": false,
+      "conn_type": "GbE PoE+"
+    },
+    {
+      "ip": "192.168.1.20",
+      "hostname": "Synology-DS920-NAS",
+      "mac": "00:11:32:89:ab:cd",
+      "vendor": "Synology Inc.",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "0.9 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        { "port": 22, "service": "SSH" },
+        { "port": 80, "service": "HTTP" },
+        { "port": 443, "service": "HTTPS" },
+        { "port": 445, "service": "SMB (Fileshare)" },
+        { "port": 5000, "service": "DSM Web UI" },
+        { "port": 5001, "service": "DSM HTTPS" }
+      ],
+      "is_gateway": false,
+      "conn_type": "2x 1Gbps Bonded Ethernet"
+    },
+    {
+      "ip": "192.168.1.21",
+      "hostname": "Home-Assistant-RPi4",
+      "mac": "dc:a6:32:44:55:66",
+      "vendor": "Raspberry Pi Foundation",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "1.1 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        { "port": 22, "service": "SSH" },
+        { "port": 1883, "service": "MQTT Broker" },
+        { "port": 8123, "service": "Home Assistant Web" }
+      ],
+      "is_gateway": false,
+      "conn_type": "Gigabit Ethernet"
+    },
+    {
+      "ip": "192.168.1.25",
+      "hostname": "Ubuntu-Media-Plex",
+      "mac": "00:50:56:a1:b2:c3",
+      "vendor": "VMware / Custom Rig",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "1.2 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        { "port": 22, "service": "SSH" },
+        { "port": 9000, "service": "Portainer" },
+        { "port": 32400, "service": "Plex Media Server" }
+      ],
+      "is_gateway": false,
+      "conn_type": "Gigabit Ethernet"
+    },
+    {
+      "ip": "192.168.1.101",
+      "hostname": "MacBook-Pro-M2-Work",
+      "mac": "ac:de:48:12:34:56",
+      "vendor": "Apple Inc.",
+      "category": "Workstation",
+      "status": "online",
+      "latency": "1.4 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 22, "service": "SSH" },
+        { "port": 5000, "service": "AirPlay Receiver" }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz, 1200 Mbps)"
+    },
+    {
+      "ip": "192.168.1.102",
+      "hostname": "Desktop-Gaming-Rig",
+      "mac": "20:4e:7f:99:88:77",
+      "vendor": "Intel / ASUS ROG",
+      "category": "Workstation",
+      "status": "online",
+      "latency": "0.7 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 445, "service": "SMB" },
+        { "port": 3389, "service": "Windows RDP" }
+      ],
+      "is_gateway": false,
+      "conn_type": "2.5 GbE Ethernet"
+    },
+    {
+      "ip": "192.168.1.115",
+      "hostname": "iPhone-15-Pro",
+      "mac": "f4:f5:e8:01:23:45",
+      "vendor": "Apple Inc.",
+      "category": "Mobile Device",
+      "status": "online",
+      "latency": "3.2 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz, 866 Mbps)"
+    },
+    {
+      "ip": "192.168.1.116",
+      "hostname": "iPad-Air-5",
+      "mac": "bc:d1:77:fe:dc:ba",
+      "vendor": "Apple Inc.",
+      "category": "Mobile Device",
+      "status": "online",
+      "latency": "3.5 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz)"
+    },
+    {
+      "ip": "192.168.1.140",
+      "hostname": "LG-OLED-LivingRoom-TV",
+      "mac": "70:85:c2:11:22:33",
+      "vendor": "LG Electronics",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "2.1 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 8080, "service": "webOS Control" },
+        { "port": 3000, "service": "LG Connect" }
+      ],
+      "is_gateway": false,
+      "conn_type": "100 Mbps Ethernet"
+    },
+    {
+      "ip": "192.168.1.150",
+      "hostname": "Philips-Hue-Bridge",
+      "mac": "00:17:88:aa:bb:cc",
+      "vendor": "Philips Lighting",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "1.9 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 80, "service": "HTTP API" },
+        { "port": 443, "service": "HTTPS API" }
+      ],
+      "is_gateway": false,
+      "conn_type": "100 Mbps Ethernet"
+    },
+    {
+      "ip": "192.168.1.160",
+      "hostname": "Sonos-Era100-Speaker",
+      "mac": "00:1f:6b:dd:ee:ff",
+      "vendor": "Sonos Inc.",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "4.1 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 1400, "service": "Sonos UPnP" }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi (2.4 GHz)"
+    },
+    {
+      "ip": "192.168.1.180",
+      "hostname": "Brother-HL-Laser-Printer",
+      "mac": "00:80:77:55:66:77",
+      "vendor": "Brother Industries",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "2.8 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        { "port": 80, "service": "Web Admin" },
+        { "port": 631, "service": "IPP Print Service" },
+        { "port": 9100, "service": "RAW JetDirect" }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi (2.4 GHz)"
+    }
+  ],
+  "links": [
+    { "source": "192.168.1.1", "target": "192.168.1.2", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.3", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.20", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.21", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.25", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.102", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.140", "type": "ethernet" },
+    { "source": "192.168.1.2", "target": "192.168.1.150", "type": "ethernet" },
+    { "source": "192.168.1.3", "target": "192.168.1.101", "type": "wifi" },
+    { "source": "192.168.1.3", "target": "192.168.1.115", "type": "wifi" },
+    { "source": "192.168.1.3", "target": "192.168.1.116", "type": "wifi" },
+    { "source": "192.168.1.3", "target": "192.168.1.160", "type": "wifi" },
+    { "source": "192.168.1.3", "target": "192.168.1.180", "type": "wifi" }
+  ]
+}
