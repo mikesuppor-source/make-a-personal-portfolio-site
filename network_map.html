@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetMapper - Local Network Topology</title>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #3b82f6;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title-area h1 { font-size: 1.15rem; font-weight: 700; color: #60a5fa; }
+    .title-area p { font-size: 0.8rem; color: var(--text-muted); }
+    .stats-badges { display: flex; gap: 10px; }
+    .badge {
+      background: #1f2937;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      border: 1px solid #374151;
+    }
+    .badge span { font-weight: 700; color: #93c5fd; }
+    .main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+    }
+    #network-canvas {
+      flex: 1;
+      height: 100%;
+      background: radial-gradient(circle at center, #111827 0%, #0b0f19 100%);
+    }
+    .sidebar {
+      width: 380px;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .device-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .device-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .device-card:hover, .device-card.selected {
+      border-color: #3b82f6;
+      background: #1e293b;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+    .device-card h4 {
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .category-tag {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #374151;
+      color: #93c5fd;
+    }
+    .details-row {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .ports-tag {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #34d399;
+      margin-top: 6px;
+    }
+    .inspector-panel {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      background: #0f172a;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .inspector-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>🌐 NetMapper - Local Network Topology</h1>
+      <p id="header-meta">Subnet: 192.168.1.0/24 &bull; Gateway: 192.168.1.1</p>
+    </div>
+    <div class="stats-badges">
+      <div class="badge">Devices: <span id="stat-count">14</span></div>
+      <div class="badge">Scan Time: <span>1.84s</span></div>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div id="network-canvas"></div>
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Discovered Hosts</span>
+        <button class="btn" onclick="network.fit({animation: true})">Fit View</button>
+      </div>
+      <div class="device-list" id="device-cards-container"></div>
+      <div class="inspector-panel" id="inspector-panel">
+        <div class="inspector-title">Device Inspector</div>
+        <p style="font-size: 0.8rem; color: #64748b;">Click on any device node or card to inspect hardware, ports, and latency.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const data = {
+  "metadata": {
+    "subnet": "192.168.1.0/24",
+    "gateway": "192.168.1.1",
+    "local_host_ip": "192.168.1.101",
+    "scan_timestamp": "2026-10-11 11:58:00",
+    "elapsed_seconds": 1.84,
+    "device_count": 14
+  },
+  "devices": [
+    {
+      "ip": "192.168.1.1",
+      "hostname": "UniFi-Dream-Machine-Pro",
+      "mac": "74:83:c2:1a:2b:3c",
+      "vendor": "Ubiquiti Networks",
+      "category": "Router / Gateway",
+      "status": "online",
+      "latency": "0.4 ms",
+      "lease": "Static (Gateway)",
+      "open_ports": [
+        {
+          "port": 53,
+          "service": "DNS"
+        },
+        {
+          "port": 80,
+          "service": "HTTP"
+        },
+        {
+          "port": 443,
+          "service": "HTTPS (UniFi OS)"
+        }
+      ],
+      "is_gateway": true,
+      "conn_type": "Fiber WAN / SFP+ Uplink"
+    },
+    {
+      "ip": "192.168.1.2",
+      "hostname": "UniFi-Switch-24-PoE",
+      "mac": "74:83:c2:3d:4e:5f",
+      "vendor": "Ubiquiti Networks",
+      "category": "Access Point / Switch",
+      "status": "online",
+      "latency": "0.6 ms",
+      "lease": "Static",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        },
+        {
+          "port": 80,
+          "service": "HTTP"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "10 Gbps DAC"
+    },
+    {
+      "ip": "192.168.1.3",
+      "hostname": "UniFi-U6-Pro-AP",
+      "mac": "74:83:c2:6a:7b:8c",
+      "vendor": "Ubiquiti Networks",
+      "category": "Access Point / Switch",
+      "status": "online",
+      "latency": "0.8 ms",
+      "lease": "Static",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "GbE PoE+"
+    },
+    {
+      "ip": "192.168.1.20",
+      "hostname": "Synology-DS920-NAS",
+      "mac": "00:11:32:89:ab:cd",
+      "vendor": "Synology Inc.",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "0.9 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        },
+        {
+          "port": 80,
+          "service": "HTTP"
+        },
+        {
+          "port": 443,
+          "service": "HTTPS"
+        },
+        {
+          "port": 445,
+          "service": "SMB (Fileshare)"
+        },
+        {
+          "port": 5000,
+          "service": "DSM Web UI"
+        },
+        {
+          "port": 5001,
+          "service": "DSM HTTPS"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "2x 1Gbps Bonded Ethernet"
+    },
+    {
+      "ip": "192.168.1.21",
+      "hostname": "Home-Assistant-RPi4",
+      "mac": "dc:a6:32:44:55:66",
+      "vendor": "Raspberry Pi Foundation",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "1.1 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        },
+        {
+          "port": 1883,
+          "service": "MQTT Broker"
+        },
+        {
+          "port": 8123,
+          "service": "Home Assistant Web"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "Gigabit Ethernet"
+    },
+    {
+      "ip": "192.168.1.25",
+      "hostname": "Ubuntu-Media-Plex",
+      "mac": "00:50:56:a1:b2:c3",
+      "vendor": "VMware / Custom Rig",
+      "category": "Server / NAS",
+      "status": "online",
+      "latency": "1.2 ms",
+      "lease": "Static Reserved",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        },
+        {
+          "port": 9000,
+          "service": "Portainer"
+        },
+        {
+          "port": 32400,
+          "service": "Plex Media Server"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "Gigabit Ethernet"
+    },
+    {
+      "ip": "192.168.1.101",
+      "hostname": "MacBook-Pro-M2-Work",
+      "mac": "ac:de:48:12:34:56",
+      "vendor": "Apple Inc.",
+      "category": "Workstation",
+      "status": "online",
+      "latency": "1.4 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 22,
+          "service": "SSH"
+        },
+        {
+          "port": 5000,
+          "service": "AirPlay Receiver"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz, 1200 Mbps)"
+    },
+    {
+      "ip": "192.168.1.102",
+      "hostname": "Desktop-Gaming-Rig",
+      "mac": "20:4e:7f:99:88:77",
+      "vendor": "Intel / ASUS ROG",
+      "category": "Workstation",
+      "status": "online",
+      "latency": "0.7 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 445,
+          "service": "SMB"
+        },
+        {
+          "port": 3389,
+          "service": "Windows RDP"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "2.5 GbE Ethernet"
+    },
+    {
+      "ip": "192.168.1.115",
+      "hostname": "iPhone-15-Pro",
+      "mac": "f4:f5:e8:01:23:45",
+      "vendor": "Apple Inc.",
+      "category": "Mobile Device",
+      "status": "online",
+      "latency": "3.2 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz, 866 Mbps)"
+    },
+    {
+      "ip": "192.168.1.116",
+      "hostname": "iPad-Air-5",
+      "mac": "bc:d1:77:fe:dc:ba",
+      "vendor": "Apple Inc.",
+      "category": "Mobile Device",
+      "status": "online",
+      "latency": "3.5 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi 6 (5 GHz)"
+    },
+    {
+      "ip": "192.168.1.140",
+      "hostname": "LG-OLED-LivingRoom-TV",
+      "mac": "70:85:c2:11:22:33",
+      "vendor": "LG Electronics",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "2.1 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 8080,
+          "service": "webOS Control"
+        },
+        {
+          "port": 3000,
+          "service": "LG Connect"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "100 Mbps Ethernet"
+    },
+    {
+      "ip": "192.168.1.150",
+      "hostname": "Philips-Hue-Bridge",
+      "mac": "00:17:88:aa:bb:cc",
+      "vendor": "Philips Lighting",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "1.9 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 80,
+          "service": "HTTP API"
+        },
+        {
+          "port": 443,
+          "service": "HTTPS API"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "100 Mbps Ethernet"
+    },
+    {
+      "ip": "192.168.1.160",
+      "hostname": "Sonos-Era100-Speaker",
+      "mac": "00:1f:6b:dd:ee:ff",
+      "vendor": "Sonos Inc.",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "4.1 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 1400,
+          "service": "Sonos UPnP"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi (2.4 GHz)"
+    },
+    {
+      "ip": "192.168.1.180",
+      "hostname": "Brother-HL-Laser-Printer",
+      "mac": "00:80:77:55:66:77",
+      "vendor": "Brother Industries",
+      "category": "Smart Home & IoT",
+      "status": "online",
+      "latency": "2.8 ms",
+      "lease": "DHCP Lease",
+      "open_ports": [
+        {
+          "port": 80,
+          "service": "Web Admin"
+        },
+        {
+          "port": 631,
+          "service": "IPP Print Service"
+        },
+        {
+          "port": 9100,
+          "service": "RAW JetDirect"
+        }
+      ],
+      "is_gateway": false,
+      "conn_type": "Wi-Fi (2.4 GHz)"
+    }
+  ],
+  "links": [
+    {
+      "source": "192.168.1.1",
+      "target": "192.168.1.2",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.3",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.20",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.21",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.25",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.102",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.140",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.2",
+      "target": "192.168.1.150",
+      "type": "ethernet"
+    },
+    {
+      "source": "192.168.1.3",
+      "target": "192.168.1.101",
+      "type": "wifi"
+    },
+    {
+      "source": "192.168.1.3",
+      "target": "192.168.1.115",
+      "type": "wifi"
+    },
+    {
+      "source": "192.168.1.3",
+      "target": "192.168.1.116",
+      "type": "wifi"
+    },
+    {
+      "source": "192.168.1.3",
+      "target": "192.168.1.160",
+      "type": "wifi"
+    },
+    {
+      "source": "192.168.1.3",
+      "target": "192.168.1.180",
+      "type": "wifi"
+    }
+  ]
+};
+    let network = null;
+
+    const categoryIcons = {
+      "Router / Gateway": "🛡️",
+      "Access Point / Switch": "📡",
+      "NAS / Storage": "💾",
+      "Smart Home & IoT": "💡",
+      "Mobile Device": "📱",
+      "Workstation": "💻",
+      "Windows Workstation": "🖥️",
+      "Linux / Server": "🐧",
+      "Network Printer": "🖨️",
+      "Network Client": "🔌"
+    };
+
+    const categoryColors = {
+      "Router / Gateway": { background: "#dc2626", border: "#ef4444" },
+      "Access Point / Switch": { background: "#2563eb", border: "#3b82f6" },
+      "NAS / Storage": { background: "#7c3aed", border: "#8b5cf6" },
+      "Smart Home & IoT": { background: "#059669", border: "#10b981" },
+      "Mobile Device": { background: "#d97706", border: "#f59e0b" },
+      "Workstation": { background: "#0284c7", border: "#38bdf8" },
+      "Windows Workstation": { background: "#0284c7", border: "#38bdf8" },
+      "Linux / Server": { background: "#4f46e5", border: "#6366f1" },
+      "Network Printer": { background: "#6b7280", border: "#9ca3af" },
+      "Network Client": { background: "#475569", border: "#64748b" }
+    };
+
+    function initNetwork() {
+      const nodes = new vis.DataSet(data.devices.map(d => {
+        const color = categoryColors[d.category] || { background: "#475569", border: "#64748b" };
+        const icon = categoryIcons[d.category] || "🔌";
+        return {
+          id: d.ip,
+          label: `${icon} ${d.hostname}\n${d.ip}`,
+          shape: "box",
+          margin: 10,
+          color: {
+            background: color.background,
+            border: color.border,
+            highlight: { background: "#3b82f6", border: "#60a5fa" }
+          },
+          font: { color: "#ffffff", size: 12, face: "sans-serif" },
+          borderWidth: 2,
+          shadow: true
+        };
+      }));
+
+      const edges = new vis.DataSet(data.links.map((link, idx) => ({
+        id: "edge-" + idx,
+        from: link.source,
+        to: link.target,
+        color: { color: link.type === "ethernet" ? "#3b82f6" : "#64748b" },
+        width: link.type === "ethernet" ? 2.5 : 1.5,
+        dashes: link.type === "wifi",
+        smooth: { type: "continuous" }
+      })));
+
+      const container = document.getElementById("network-canvas");
+      const networkData = { nodes, edges };
+      const options = {
+        physics: {
+          solver: "forceAtlas2Based",
+          forceAtlas2Based: {
+            gravitationalConstant: -70,
+            centralGravity: 0.015,
+            springLength: 140,
+            springConstant: 0.08
+          },
+          stabilization: { iterations: 150 }
+        },
+        interaction: { hover: true, tooltipDelay: 100 }
+      };
+
+      network = new vis.Network(container, networkData, options);
+
+      network.on("selectNode", params => {
+        if (params.nodes.length > 0) {
+          selectDevice(params.nodes[0]);
+        }
+      });
+    }
+
+    function renderDeviceList() {
+      const container = document.getElementById("device-cards-container");
+      container.innerHTML = "";
+
+      data.devices.forEach(d => {
+        const card = document.createElement("div");
+        card.className = "device-card";
+        card.id = "card-" + d.ip.replace(/\./g, "-");
+        
+        const portsStr = d.open_ports.map(p => `${p.port} (${p.service})`).join(", ");
+        
+        card.innerHTML = `
+          <h4>
+            <span>${d.hostname}</span>
+            <span class="category-tag">${d.category}</span>
+          </h4>
+          <div class="details-row">
+            <span>IP: <strong>${d.ip}</strong></span>
+            <span>MAC: ${d.mac}</span>
+          </div>
+          <div class="details-row">
+            <span>Vendor: ${d.vendor}</span>
+          </div>
+          ${d.open_ports.length > 0 ? `<div class="ports-tag">Ports: ${portsStr}</div>` : ''}
+        `;
+
+        card.addEventListener("click", () => {
+          selectDevice(d.ip);
+          if (network) {
+            network.selectNodes([d.ip]);
+            network.focus(d.ip, { scale: 1.2, animation: true });
+          }
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    function selectDevice(ip) {
+      const d = data.devices.find(x => x.ip === ip);
+      if (!d) return;
+
+      document.querySelectorAll(".device-card").forEach(el => el.classList.remove("selected"));
+      const card = document.getElementById("card-" + ip.replace(/\./g, "-"));
+      if (card) {
+        card.classList.add("selected");
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      const inspector = document.getElementById("inspector-panel");
+      const portsHtml = d.open_ports.length > 0
+        ? d.open_ports.map(p => `<span style="background:#1e293b; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.75rem; color:#38bdf8;">${p.port}/${p.service}</span>`).join(" ")
+        : '<span style="color:#64748b; font-size:0.8rem;">No open standard ports detected</span>';
+
+      inspector.innerHTML = `
+        <div class="inspector-title">Device Inspector: ${d.hostname}</div>
+        <div style="font-size:0.8rem; line-height:1.6;">
+          <div><strong>IP Address:</strong> ${d.ip}</div>
+          <div><strong>MAC Address:</strong> ${d.mac}</div>
+          <div><strong>Vendor:</strong> ${d.vendor}</div>
+          <div><strong>Category:</strong> ${d.category}</div>
+          <div style="margin-top:6px;"><strong>Open Services:</strong></div>
+          <div style="margin-top:4px;">${portsHtml}</div>
+        </div>
+      `;
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initNetwork();
+      renderDeviceList();
+    });
+  </script>
+</body>
+</html>
