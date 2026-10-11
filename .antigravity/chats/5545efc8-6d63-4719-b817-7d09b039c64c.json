@@ -4,5 +4,18 @@
   "createdAt": "2026-09-27T18:36:58.298Z",
   "filename": "5545efc8-6d63-4719-b817-7d09b039c64c.json",
   "geminiStarted": false,
-  "messages": []
+  "messages": [
+    {
+      "id": "efdd52d8-f481-43ba-bee5-cf73e1fd1619",
+      "role": "user",
+      "content": "Create for me a full network mapping to my local network",
+      "status": "pending",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": null,
+      "created_at": "2026-10-11T11:55:52.679Z",
+      "sender": "ios",
+      "is_cancelled": false
+    }
+  ]
 }
